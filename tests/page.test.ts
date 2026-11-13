@@ -199,4 +199,28 @@ describe('a fiddle page', () => {
     handle.destroy();
     expect(document.querySelector('.pf-page')).toBeNull();
   });
+
+  it('runs every fiddle with the host’s given names, and refuses a page whose names are missing', async () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = document.getElementById('root')!;
+    const { rt, fake } = fakeRuntime();
+    const needs: PageInput = { id: 'r', title: 'Round', given: ['ciphertext'], cells: [{ kind: 'code', id: 'c', text: 'print:x' }] };
+    expect(() => mountPage(root, needs, { runtime: rt, store: memoryStore() })).toThrow(/needs the host to give `ciphertext`/);
+    const handle = mountPage(root, needs, { runtime: rt, store: memoryStore(), given: { ciphertext: 'KHOOR' } });
+    [...handle.el.querySelectorAll('button')].find((b) => b.textContent === 'Run')!.click();
+    await vi.waitFor(() => expect(fake.sent.some((m) => m.type === 'run' && m.given === '{"ciphertext":"KHOOR"}')).toBe(true));
+    handle.destroy();
+  });
+
+  it('names each stage by its title, for the teacher and the student', () => {
+    const titled: PageInput = { ...page, stages: ['Moved, or changed?', 'Which one?'] };
+    document.body.innerHTML = '<div id="t"></div><div id="s"></div>';
+    const { rt } = fakeRuntime();
+    const store = memoryStore();
+    const teacher = mountPage(document.getElementById('t')!, titled, { runtime: rt, store, teacher: true });
+    const student = mountPage(document.getElementById('s')!, titled, { runtime: rt, store });
+    expect(teacher.el.querySelector('[data-cell="task"] .pf-stage-tag')?.textContent).toBe('Part 2: Moved, or changed?');
+    expect([...teacher.el.querySelectorAll('button')].some((b) => b.textContent === 'Release: Moved, or changed?')).toBe(true);
+    expect(student.el.querySelector('.pf-more')?.textContent).toBe('Next, “Moved, or changed?”, opens when your teacher releases it.');
+  });
 });

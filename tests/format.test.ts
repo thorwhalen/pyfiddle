@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { cellConcepts, detectConcepts, pythonTokens } from '../src/page/concepts';
 import { colabUrl, toIpynb } from '../src/page/ipynb';
 import { fromPrimmLesson, type PrimmLesson } from '../src/page/primm';
-import { lastStage, parsePage, type Concept } from '../src/page/schema';
+import { lastStage, parsePage, stageTitle, type Concept } from '../src/page/schema';
 
 const library: Concept[] = [
   { id: 'for', title: 'for loops', summary: 'Repeat for each item.' },
@@ -39,6 +39,16 @@ describe('the page format', () => {
     expect(() => parsePage({ id: 'p', title: 'P', cells: [{ kind: 'choice', question: 'q', choices: ['a', 'b'], answer: 2 }] })).toThrow(/one of the choices/);
     expect(() => parsePage({ id: 'p', title: 'P', cells: [{ kind: 'markdown', text: 'x', check: 'assert 1' }] })).toThrow();
     expect(() => parsePage({ id: 'p', title: 'P', cells: [], colab: 'javascript:alert(1)' })).toThrow();
+  });
+
+  it('a page lists the names the host gives, and titles its stages', () => {
+    const page = parsePage({ id: 'p', title: 'P', given: ['ciphertext'], stages: ['Moved, or changed?'], cells: [{ kind: 'markdown', id: 'a', text: 'x', stage: 1 }] });
+    expect(page.given).toEqual(['ciphertext']);
+    expect(stageTitle(page, 1)).toBe('Moved, or changed?');
+    expect(stageTitle(page, 0)).toBeUndefined();
+    expect(parsePage({ id: 'p', title: 'P', cells: [] }).given).toEqual([]);
+    expect(() => parsePage({ id: 'p', title: 'P', stages: ['One'], cells: [{ kind: 'markdown', id: 'a', text: 'x', stage: 2 }] })).toThrow(/cell "a" is in stage 2, but `stages` names only 1/);
+    expect(() => parsePage({ id: 'p', title: 'P', given: ['not a name'], cells: [] })).toThrow(/a Python name/);
   });
 
   it('the example pages are valid pages', () => {
@@ -118,6 +128,9 @@ describe('the notebook', () => {
     expect(check.source[0]).toMatch(/^#@title Check your answer/);
     expect(JSON.stringify(nb)).not.toContain('n = 3');
     expect(JSON.stringify(toIpynb(page, { solutions: true }))).toContain('n = 3');
+    const given = toIpynb(page, { given: { ciphertext: 'KHOOR "Z"', keys: [1, null] } }).cells[1]!;
+    expect(given.cell_type).toBe('code');
+    expect(given.source.join('')).toBe('import json\nciphertext = "KHOOR \\"Z\\""\nkeys = json.loads("[1,null]")');
     expect(toIpynb(page).cells.some((c) => c.source.join('').includes('Which?'))).toBe(true);
   });
 

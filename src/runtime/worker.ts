@@ -19,7 +19,7 @@ type Pyodide = {
   setInterruptBuffer: (b: Int32Array) => void;
   pyimport: (name: string) => { run: RunFn };
 };
-type RunFn = (code: string, check: string) => { toJs: () => [string, string, string, boolean]; destroy: () => void };
+type RunFn = (code: string, check: string, given: string) => { toJs: () => [string, string, string, boolean]; destroy: () => void };
 
 const post = (m: FromWorker) => postMessage(m);
 
@@ -48,9 +48,9 @@ async function boot(indexURL: string, interrupt?: SharedArrayBuffer): Promise<Py
   return py;
 }
 
-function run({ id, code, check }: RunMessage) {
+function run({ id, code, check, given }: RunMessage) {
   current = id;
-  const result = harness!(code, check ?? '');
+  const result = harness!(code, check ?? '', given ?? '');
   const [error, status, message, interrupted] = result.toJs();
   result.destroy();
   post({

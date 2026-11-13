@@ -10,12 +10,12 @@ import { pyodideMeta } from '../src/node';
 
 let py: PyodideInterface;
 let out = '';
-type Run = (code: string, check: string) => { toJs: () => [string, string, string, boolean]; destroy: () => void };
+type Run = (code: string, check: string, given?: string) => { toJs: () => [string, string, string, boolean]; destroy: () => void };
 let harness: Run;
 
-const run = (code: string, check = '') => {
+const run = (code: string, check = '', given?: Record<string, unknown>) => {
   out = '';
-  const r = harness(code, check);
+  const r = harness(code, check, given ? JSON.stringify(given) : '');
   const [error, status, message, interrupted] = r.toJs();
   r.destroy();
   return { error, status, message, interrupted, out };
@@ -77,6 +77,22 @@ describe('the harness, under CPython', () => {
 
   it('explains that input() does not work in a page', () => {
     expect(run('input("name? ")').error).toMatch(/input\(\) does not work here/);
+  });
+
+  it('starts the namespace with the host’s given names, afresh each run, and the check sees them', () => {
+    const given = { ciphertext: 'KHOOR "Z"\nok', shift: 3, keys: [1, null, true] };
+    expect(run('print(ciphertext, shift, keys)', '', given).out).toBe('KHOOR "Z"\nok 3 [1, None, True]\n');
+    run('ciphertext = "changed"; keys.append(9)', '', given);
+    expect(run('print(ciphertext[:5], keys)', 'assert shift == 3', given)).toMatchObject({ out: 'KHOOR [1, None, True]\n', status: 'passed' });
+    expect(run('print(ciphertext)').error).toMatch(/NameError: name 'ciphertext' is not defined/);
+  });
+
+  it('with given names, a traceback still names only the cell’s lines and builtins are still reset', () => {
+    const { error } = run('import builtins\nbuiltins.len = None\nx = ciphertext + 1', '', { ciphertext: 'abc' });
+    expect(error).toMatch(/File "cell", line 3/);
+    expect(error).not.toMatch(/_pyfiddle|<exec>|json/);
+    expect(run('print(len(ciphertext))', '', { ciphertext: 'abc' }).out).toBe('3\n');
+    expect(run('import builtins\nbuiltins.len = None', 'assert len("ab") == 2').status).toBe('passed');
   });
 
   it('treats exit() as the end of the program, not an error', () => {

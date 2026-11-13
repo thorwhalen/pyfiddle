@@ -4,7 +4,7 @@
  * For build scripts, servers and tests that read or write pages.
  */
 export {
-  CellSchema, ChoiceCellSchema, CodeCellSchema, ConceptSchema, MarkdownCellSchema, PageSchema, lastStage, parsePage,
+  CellSchema, ChoiceCellSchema, CodeCellSchema, ConceptSchema, MarkdownCellSchema, PageSchema, lastStage, parsePage, stageTitle,
 } from './schema';
 export type { Cell, ChoiceCell, CodeCell, Concept, MarkdownCell, Page, PageInput, ResolvedCell, ResolvedPage } from './schema';
 export { cellConcepts, detectConcepts, mergeConcepts, pythonTokens } from './concepts';

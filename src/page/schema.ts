@@ -94,6 +94,17 @@ export const PageSchema = z.object({
   cells: z.array(CellSchema),
   /** Concept explainers this page defines (merged over any library the host passes). */
   concepts: z.array(ConceptSchema).default([]),
+  /**
+   * Names every fiddle starts with, whose values the host supplies (`mountPage`'s `given`), never the
+   * page: a round's ciphertext, say, so no page file holds it. Listing them here lets a page say
+   * what it needs, and the renderer refuse to show it without them.
+   */
+  given: z.array(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, 'a Python name')).default([]),
+  /**
+   * A title per release stage: `stages[0]` names stage 1, and so on (stage 0, shown from the start,
+   * has none). When given, every staged cell's stage must have a title.
+   */
+  stages: z.array(z.string().min(1)).optional(),
   /** The page as a notebook already published on GitHub, opened in Colab (`colabUrl` builds it). */
   colab: z.url({ protocol: /^https?$/ }).optional(),
 });
@@ -127,9 +138,15 @@ export function parsePage(input: unknown): ResolvedPage {
   for (const c of cells) {
     if (seen.has(c.id)) throw new Error(`pyfiddle: page "${page.id}" has two cells with the id "${c.id}"`);
     seen.add(c.id);
+    if (page.stages && c.stage > page.stages.length) {
+      throw new Error(`pyfiddle: page "${page.id}" cell "${c.id}" is in stage ${c.stage}, but \`stages\` names only ${page.stages.length}`);
+    }
   }
   return { ...page, cells };
 }
+
+/** A stage's title, when the page names its stages (stage 0 has none). */
+export const stageTitle = (page: Pick<Page, 'stages'>, stage: number): string | undefined => (stage > 0 ? page.stages?.[stage - 1] : undefined);
 
 /** The highest stage any cell is in (0 when the page is not staged). */
 export const lastStage = (page: Pick<Page, 'cells'>) => page.cells.reduce((n, c) => Math.max(n, c.stage), 0);

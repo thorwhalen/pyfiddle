@@ -39,7 +39,8 @@ npx pyfiddle pyodide public/   # copies Pyodide's core files (about 13 MB) and t
 - **Cells**: `markdown`, `code` (a fiddle with Run, Stop, Reset and Undo) and `choice` ("what will this print?"). One Python serves the whole page; each run gets a fresh namespace, and a traceback shows only the cell's own lines.
 - **Hidden checks**: a code cell's `check` is Python run after the student's code in the same namespace (with `_printed` holding what it printed). Its first failed `assert` message is what the student reads. The check is never shown.
 - **Deferred disclosure**: `hints` open one at a time, then the `solution`; the page remembers how far a student went.
-- **Staged release**: every cell has a `stage` (0, the default, is visible from the start). With `teacher: true` the page shows every cell and a "Release next part" button; students see a stage once it is released. When the store is shared (below), the release reaches every student's open page.
+- **Staged release**: every cell has a `stage` (0, the default, is visible from the start). With `teacher: true` the page shows every cell and a "Release next part" button; students see a stage once it is released. When the store is shared (below), the release reaches every student's open page. A page's `stages` gives each stage a title (`stages[0]` names stage 1), shown on the release button and to students as what comes next.
+- **Names the host gives**: a page lists in `given` the names every fiddle starts with (a round's text, say) and the host passes their values (`mountPage(el, page, { given: { ciphertext } })`), so the page file never holds them. Each run gets them afresh; a downloaded notebook sets them in its first cell. A page whose `given` names are not all supplied is refused with an error naming them.
 - **Concept explainers**: a page or a host defines `concepts` (id, title, a short markdown summary, a link to the concept's own page, which is just another page with its own fiddles). Each cell lists the concepts its code uses, in a collapsed block: those it names in `concepts`, plus those found in its code (`for`, `len`, `%`, `.lower`, `f"`).
 - **Notebook export**: "Download notebook" writes the page (up to the released stage) as an `.ipynb`; each check becomes a folded "Check your answer" cell that prints the same verdict. A page with a `colab` URL also gets "Open in Colab". `npx pyfiddle notebook page.json out.ipynb` does the same from the command line.
 - **Stop always works**: on a cross-origin isolated page (COOP/COEP headers) it raises `KeyboardInterrupt` and keeps the interpreter; otherwise it ends the worker and the next Run starts a new one from cached files.
@@ -47,13 +48,15 @@ npx pyfiddle pyodide public/   # copies Pyodide's core files (about 13 MB) and t
 
 ## The page format
 
-A page is `{ id, title, cells, concepts?, colab? }`. The Zod schema in `src/page/schema.ts` is the source of truth; the same format as JSON Schema ships as `pyfiddle/page.schema.json`, for pages written as JSON, YAML or TOML.
+A page is `{ id, title, cells, concepts?, given?, stages?, colab? }`. The Zod schema in `src/page/schema.ts` is the source of truth; the same format as JSON Schema ships as `pyfiddle/page.schema.json`, for pages written as JSON, YAML or TOML.
 
 | Cell | Fields (all cells also take `id`, `stage`, `concepts`) |
 |---|---|
 | `markdown` | `text` |
 | `code` | `text` (the starting code), `task`, `label`, `check`, `hints` (or a single `hint`), `solution`, `readOnly` |
 | `choice` | `question`, `code`, `choices`, `answer` (index), `explain` |
+
+A cell's `id` keys the student's draft, hints and answer in the store. Cells without one get `cell-<n>` by position, so inserting a cell moves later drafts to the wrong cell: name the cells of any page that will change after students have used it.
 
 Lessons written in the PRIMM shape (Predict, Run, Investigate, Modify, Make; one object with a field per step) become pages with `fromPrimmLesson(lesson, { staged })`, so existing lesson files need no rewrite.
 

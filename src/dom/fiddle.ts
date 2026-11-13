@@ -10,7 +10,7 @@
  * under the output.
  */
 import { COULD_NOT_START, sharedRuntime, type PythonRuntime, type RunResult } from '../runtime/runtime';
-import type { Stream } from '../runtime/protocol';
+import type { Given, Stream } from '../runtime/protocol';
 import { whenRead, type FiddleStore } from '../page/store';
 import { createEditor, type EditorHandle } from './editor';
 import { attr, button, h } from './h';
@@ -32,6 +32,8 @@ export type FiddleOptions = {
   label?: string;
   /** Hidden Python run after the code; see the page format. */
   check?: string;
+  /** Names the program starts with, set by the host (a round's ciphertext, say). */
+  given?: Given;
   readOnly?: boolean;
   runtime?: PythonRuntime;
   /** Where the student's code is kept; nothing is kept without one. */
@@ -46,7 +48,7 @@ const mb = (bytes: number) => (bytes / 1e6).toFixed(1);
 const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 
 export function mountFiddle(parent: HTMLElement, opts: FiddleOptions): FiddleHandle {
-  const { id, code: initial, label = 'Python code', check, readOnly = false, store, storeKey, onResult } = opts;
+  const { id, code: initial, label = 'Python code', check, given, readOnly = false, store, storeKey, onResult } = opts;
   const rt = opts.runtime ?? sharedRuntime();
 
   let code = initial;
@@ -176,6 +178,7 @@ export function mountFiddle(parent: HTMLElement, opts: FiddleOptions): FiddleHan
     const r = await rt.run(code, {
       owner: id,
       check,
+      given,
       preempt: true,
       onOutput: (stream: Stream, text: string) => {
         clear();
