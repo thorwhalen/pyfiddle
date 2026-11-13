@@ -1,0 +1,9 @@
+node_modules/
+dist/
+src/runtime/worker-source.generated.ts
+example/pyodide/
+example/pyfiddle.iife.js
+example/styles.css
+test-results/
+playwright-report/
+.claude/handoffs/
