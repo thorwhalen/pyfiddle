@@ -1,0 +1,17 @@
+Python in this page: open-source licences
+=========================================
+
+The Python cells run Pyodide {version}, which is CPython {python} (the reference Python) and its
+standard library compiled to WebAssembly. These are Pyodide's unmodified release files.
+
+- Pyodide {version}: Mozilla Public License 2.0 (below). Source code:
+  https://github.com/pyodide/pyodide/tree/{version}
+  Pyodide's changes to CPython: https://github.com/pyodide/pyodide/tree/{version}/cpython/patches
+  The other libraries Pyodide links into pyodide.asm.wasm, and their licences, are recorded in
+  that source tree.
+- CPython {python} and its standard library: the Python Software Foundation License Version 2 and
+  the licences of the software it incorporates (below, from CPython's LICENSE and
+  Doc/license.rst at v{python}). Source code: https://github.com/python/cpython/tree/v{python}
+- The code editor, CodeMirror 6 and Lezer: MIT License (below).
+  Source code: https://github.com/codemirror/dev and https://github.com/lezer-parser
+

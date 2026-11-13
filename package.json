@@ -1,0 +1,70 @@
+{
+  "name": "pyfiddle",
+  "version": "0.1.0",
+  "description": "Python fiddle web pages: text and runnable Python cells, real CPython (Pyodide) in a Web Worker, staged disclosure, hidden checks, concept explainers, .ipynb export.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./runtime": { "types": "./dist/runtime.d.ts", "default": "./dist/runtime.js" },
+    "./page": { "types": "./dist/page.d.ts", "default": "./dist/page.js" },
+    "./react": { "types": "./dist/react.d.ts", "default": "./dist/react.js" },
+    "./capacitor": { "types": "./dist/capacitor.d.ts", "default": "./dist/capacitor.js" },
+    "./vite": { "types": "./dist/vite.d.ts", "default": "./dist/vite.js" },
+    "./node": { "types": "./dist/node.d.ts", "default": "./dist/node.js" },
+    "./styles.css": "./dist/styles.css",
+    "./page.schema.json": "./dist/page.schema.json",
+    "./pyfiddle.iife.js": "./dist/pyfiddle.iife.js",
+    "./pyfiddle.iife.js.LICENSE.txt": "./dist/pyfiddle.iife.js.LICENSE.txt"
+  },
+  "bin": { "pyfiddle": "./dist/cli.js" },
+  "files": ["dist", "notices"],
+  "sideEffects": ["*.css"],
+  "publishConfig": { "access": "public" },
+  "scripts": {
+    "gen": "node scripts/build-worker.mjs",
+    "build": "npm run gen && node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/emit-schema.mjs && node scripts/bundle-notices.mjs && node scripts/check-exports.mjs",
+    "typecheck": "npm run gen && tsc --noEmit",
+    "test": "npm run gen && vitest run",
+    "e2e": "npm run build && node dist/cli.js pyodide example && playwright test",
+    "example": "npm run build && node dist/cli.js pyodide example && node scripts/serve.mjs example",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.8.0",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.36.0",
+    "@lezer/highlight": "^1.2.1",
+    "marked": "^18.0.0",
+    "pyodide": "314.0.7",
+    "zod": "^4.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "jsdom": "^26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "author": "Thor Whalen",
+  "repository": { "type": "git", "url": "https://github.com/thorwhalen/pyfiddle.git" },
+  "homepage": "https://github.com/thorwhalen/pyfiddle#readme",
+  "keywords": ["python", "pyodide", "fiddle", "notebook", "teaching", "codemirror", "web-worker", "ipynb", "colab"]
+}

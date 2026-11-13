@@ -1,0 +1,83 @@
+# npm auth: trusted publishing (OIDC) only. Never add an NPM_TOKEN secret.
+# npmjs.com -> pyfiddle -> Settings -> Trusted Publisher -> GitHub Actions:
+#   owner/repo = thorwhalen/pyfiddle, workflow filename = ci.yml, no environment.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node scripts/prepare-example.mjs && npx playwright test
+
+  publish:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: npm-publish-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      # Only the commit SUBJECT can arm a release, read with git (never interpolated from the payload).
+      - id: gate
+        run: |
+          subject=$(git log -1 --pretty=%s)
+          case "$subject" in *'[publish]'*) echo "publish=true" >> "$GITHUB_OUTPUT" ;; *) echo "publish=false" >> "$GITHUB_OUTPUT" ;; esac
+      - if: steps.gate.outputs.publish == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - if: steps.gate.outputs.publish == 'true'
+        name: Ensure npm >= 11.5.1 (required for OIDC trusted publishing)
+        run: |
+          if ! node -e "const [a,b,c]=process.argv[1].split('.').map(Number);process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)" "$(npm --version)"; then
+            npm install -g npm@^11.5.1
+          fi
+      - if: steps.gate.outputs.publish == 'true'
+        id: state
+        name: Is this version new, and is the package on npm yet?
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if ! current=$(npm view pyfiddle dist-tags.latest 2>"$RUNNER_TEMP/err"); then
+            grep -q E404 "$RUNNER_TEMP/err" || { cat "$RUNNER_TEMP/err"; exit 1; }
+            echo "::warning::pyfiddle is not on npm yet: the first version is published by hand (npm-publishing skill)."
+            echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if npm view "pyfiddle@${version}" version >/dev/null 2>&1; then
+            echo "::warning::pyfiddle@${version} is already on npm: bump the version to publish."
+            echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+      - if: steps.state.outputs.go == 'true'
+        run: npm ci && npm publish --provenance --access public
+      - if: steps.state.outputs.go == 'true'
+        name: Tag the release
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          git tag "$tag" && git push origin "$tag"

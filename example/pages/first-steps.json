@@ -1,0 +1,61 @@
+{
+  "$schema": "../../dist/page.schema.json",
+  "id": "first-steps",
+  "title": "First steps: counting letters",
+  "concepts": [
+    { "id": "for", "title": "for loops", "summary": "`for x in things:` runs the indented lines once for each item, with `x` set to that item.", "href": "#concept-for" },
+    { "id": "len", "title": "len()", "summary": "`len(s)` is how many items `s` holds: characters in a string, entries in a list." },
+    { "id": "lower", "title": ".lower()", "summary": "`s.lower()` is a copy of `s` in small letters.", "match": [".lower"] },
+    { "id": "count", "title": ".count()", "summary": "`s.count(x)` is how many times `x` appears in `s`.", "match": [".count"] },
+    { "id": "fstring", "title": "f-strings", "summary": "`f\"{n} letters\"` puts the value of `n` into the text.", "match": ["f\""] }
+  ],
+  "cells": [
+    {
+      "kind": "markdown",
+      "id": "intro",
+      "text": "A sentence is just a string of characters, and Python can count them. Run the cell below, then change the sentence and run it again."
+    },
+    {
+      "kind": "code",
+      "id": "warm-up",
+      "label": "Count the characters",
+      "text": "sentence = \"The quick brown fox jumps over the lazy dog\"\nprint(len(sentence), \"characters\")\n"
+    },
+    {
+      "kind": "choice",
+      "id": "predict",
+      "question": "What will this print?",
+      "code": "word = \"banana\"\nprint(word.count(\"a\"))\n",
+      "choices": ["1", "3", "6"],
+      "answer": 1,
+      "explain": "`count` looks for every `a` in `banana`: there are three."
+    },
+    {
+      "kind": "markdown",
+      "id": "part-2",
+      "stage": 1,
+      "text": "### Your turn\n\nCapital and small letters are different characters to Python, so `\"T\"` and `\"t\"` are counted apart. Small letters first, then count."
+    },
+    {
+      "kind": "code",
+      "id": "count-t",
+      "stage": 1,
+      "task": "Make `n` the number of times the letter **t** appears in `sentence`, whether it is written `T` or `t`.",
+      "text": "sentence = \"The quick brown fox jumps over the lazy dog\"\nn = 0  # change this line\nprint(n)\n",
+      "check": "assert n == sentence.lower().count(\"t\"), \"n should count both T and t. Try making the sentence small letters first.\"\n",
+      "hints": ["`sentence.lower()` is the sentence in small letters.", "`sentence.lower().count(\"t\")` counts the small t's of that copy."],
+      "solution": "sentence = \"The quick brown fox jumps over the lazy dog\"\nn = sentence.lower().count(\"t\")\nprint(n)\n"
+    },
+    {
+      "kind": "code",
+      "id": "every-letter",
+      "stage": 2,
+      "concepts": ["for", "fstring"],
+      "task": "Print how many times each letter of the alphabet appears, one line per letter that appears at least once, like `e 3`.",
+      "text": "sentence = \"The quick brown fox jumps over the lazy dog\"\nalphabet = \"abcdefghijklmnopqrstuvwxyz\"\n# your loop here\n",
+      "check": "assert \"o 4\" in _printed, \"The line for o should say 4.\"\nassert \"e 3\" in _printed, \"The line for e should say 3.\"\n",
+      "hint": "`for letter in alphabet:` visits each letter; inside, count it in `sentence.lower()` and print it with an f-string when the count is more than 0.",
+      "solution": "sentence = \"The quick brown fox jumps over the lazy dog\"\nalphabet = \"abcdefghijklmnopqrstuvwxyz\"\nfor letter in alphabet:\n    n = sentence.lower().count(letter)\n    if n > 0:\n        print(f\"{letter} {n}\")\n"
+    }
+  ]
+}
