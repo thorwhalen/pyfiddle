@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mountPage, type PageOptions } from '../src/dom/page';
 import type { PageInput } from '../src/page/schema';
-import { memoryStore, storeKeys } from '../src/page/store';
+import { memoryStore, storeKeys, type FiddleStore } from '../src/page/store';
 import { fakeRuntime, tick } from './fakes';
 
 const example = JSON.parse(readFileSync('example/pages/first-steps.json', 'utf8'));
@@ -157,7 +157,7 @@ describe('a fiddle page', () => {
     document.body.innerHTML = '<div id="root"></div>';
     const { rt } = fakeRuntime();
     let answer!: (v: unknown) => void;
-    const slow = { get: (key: string) => (key === storeKeys.released('p') ? new Promise((r) => { answer = r; }) : undefined), set: () => {} };
+    const slow = { get: (key: string) => (key === storeKeys.released('p') ? new Promise((r) => { answer = r; }) : undefined), set: () => {} } as unknown as FiddleStore;
     const handle = mountPage(document.getElementById('root')!, page, { runtime: rt, store: slow });
     handle.destroy();
     answer(2);
