@@ -10,9 +10,16 @@ export type BootMessage = { type: 'boot'; indexURL: string; interrupt?: SharedAr
 /**
  * Run `code` in a fresh namespace. When `check` is given, it runs afterwards in the same namespace,
  * so it can look at the variables and functions the code made (and at `_printed`, everything the
- * code printed); its first failed `assert` is the hint.
+ * code printed); its first failed `assert` is the hint. `given` is JSON text of an object whose
+ * entries the namespace starts with (see `Given`).
  */
-export type RunMessage = { type: 'run'; id: number; code: string; check?: string };
+export type RunMessage = { type: 'run'; id: number; code: string; check?: string; given?: string };
+
+/**
+ * Names a program starts with, set by the host rather than written in a cell (a round's ciphertext,
+ * say). Values cross to Python as JSON: strings, numbers, booleans, null, lists and dicts.
+ */
+export type Given = Record<string, unknown>;
 
 export type ToWorker = BootMessage | RunMessage;
 

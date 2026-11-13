@@ -12,9 +12,10 @@
 import { marked } from 'marked';
 import { cellConcepts, mergeConcepts } from '../page/concepts';
 import { ipynbText } from '../page/ipynb';
-import { lastStage, parsePage, type Cell, type ChoiceCell, type CodeCell, type Concept, type PageInput, type ResolvedPage } from '../page/schema';
+import { lastStage, parsePage, stageTitle, type Cell, type ChoiceCell, type CodeCell, type Concept, type PageInput, type ResolvedPage } from '../page/schema';
 import { localStore, storeKeys, whenRead, type FiddleStore } from '../page/store';
 import { sharedRuntime, type PythonRuntime, type RunResult } from '../runtime/runtime';
+import type { Given } from '../runtime/protocol';
 import { createEditor, type EditorHandle } from './editor';
 import { mountFiddle, type FiddleHandle } from './fiddle';
 import { attr, button, h } from './h';
@@ -29,6 +30,11 @@ export type PageOptions = {
   conceptHref?: (concept: Concept) => string | undefined;
   /** Find a cell's concepts in its code too, not only those it lists. Default true. */
   detectConcepts?: boolean;
+  /**
+   * Values for the names the page's `given` lists (and any others every fiddle should start with).
+   * A page that lists a name not supplied here is refused with an error naming it.
+   */
+  given?: Given;
   /** The teacher's view: every stage visible, with release controls. Default false. */
   teacher?: boolean;
   /** Offer the page as a notebook (download, and Open in Colab when the page names one). Default true. */
@@ -81,6 +87,8 @@ const downloadFile = (name: string, file: Blob) => {
 /** The default markdown renderer: `marked`, HTML passed through (authors' content is trusted; see `renderMarkdown`). */
 export const markedRenderer = (md: string): string => marked.parse(md, { async: false });
 
+const MORE = 'More of this page opens when your teacher releases it.';
+
 export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, opts: PageOptions = {}): PageHandle {
   const page = parsePage(input);
   const {
@@ -93,7 +101,14 @@ export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, 
     renderMarkdown = markedRenderer,
     saveFile = downloadFile,
     onResult,
+    given,
   } = opts;
+  const missing = page.given.filter((name) => !given || !Object.hasOwn(given, name));
+  if (missing.length) throw new Error(`pyfiddle: page "${page.id}" needs the host to give ${missing.map((n) => `\`${n}\``).join(', ')} (mountPage's \`given\` option)`);
+  const partName = (stage: number) => {
+    const title = stageTitle(page, stage);
+    return title ? `Part ${stage + 1}: ${title}` : `Part ${stage + 1}`;
+  };
   /** Set by destroy(): a store answer arriving later must not build anything into the detached page. */
   let destroyed = false;
   /** Hints shown per cell, so a student's notebook carries only those. */
@@ -116,8 +131,8 @@ export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, 
   if (notebook) {
     toolbar.append(button('Download notebook', () => {
       const text = teacher
-        ? ipynbText(page, { solutions: true })
-        : ipynbText(page, { stage: released, hints: (id) => hintsShown[id] ?? 0 });
+        ? ipynbText(page, { solutions: true, given })
+        : ipynbText(page, { stage: released, hints: (id) => hintsShown[id] ?? 0, given });
       saveFile(`${page.id}.ipynb`, new Blob([text], { type: 'application/x-ipynb+json' }));
     }, { kind: 'quiet' }));
     const colab = safeHref(page.colab);
@@ -136,7 +151,7 @@ export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, 
     el.append(section);
     return { cell, el: section, mounted: false };
   });
-  const more = h('p', { class: 'pf-more', hidden: true }, 'More of this page opens when your teacher releases it.');
+  const more = h('p', { class: 'pf-more', hidden: true }, MORE);
   el.append(more);
 
   const conceptsBlock = (cell: Cell) => {
@@ -160,6 +175,7 @@ export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, 
       code: cell.text.replace(/\n+$/, ''),
       label: plainText(cell.label ?? cell.task?.split('\n').find((l) => l.trim() && !/^#/.test(l)) ?? cell.task ?? 'Python code'),
       check: cell.check,
+      given,
       readOnly: cell.readOnly,
       runtime,
       store,
@@ -241,7 +257,7 @@ export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, 
     if (slot.mounted) return;
     slot.mounted = true;
     const { cell } = slot;
-    if (teacher && cell.stage > 0) slot.el.append(h('p', { class: 'pf-stage-tag' }, `Part ${cell.stage + 1}`));
+    if (teacher && cell.stage > 0) slot.el.append(h('p', { class: 'pf-stage-tag' }, partName(cell.stage)));
     if (cell.kind === 'markdown') slot.el.append(markdown(cell.text));
     else if (cell.kind === 'code') mountCode(slot, cell);
     else mountChoice(slot, cell);
@@ -259,6 +275,9 @@ export function mountPage(parent: HTMLElement, input: PageInput | ResolvedPage, 
       attr(slot.el, 'data-held', teacher && !open);
     }
     more.hidden = teacher || released >= last;
+    const next = stageTitle(page, released + 1);
+    more.textContent = next ? `Next, “${next}”, opens when your teacher releases it.` : MORE;
+    releaseBtn.textContent = next ? `Release: ${next}` : 'Release next part';
     stageLabel.textContent = released >= last ? `All ${last + 1} parts released` : `Part ${released + 1} of ${last + 1} released`;
     attr(releaseBtn, 'aria-disabled', released >= last ? 'true' : undefined);
     releaseBtn.hidden = released >= last;

@@ -2,16 +2,22 @@
  * The Python side of a run, as source text: installed once per interpreter as a private module
  * (`_pyfiddle`), so a cell's program cannot reach it by accident.
  *
- * `run(code, check)` runs the code in a fresh namespace under the file name "cell", so a traceback
- * names the cell's lines and nothing of ours; then the check, in the same namespace, with
- * `_printed` holding everything the code printed. Every run starts from the same builtins and
- * recursion limit, so one cell's experiment (`len = ...`, `builtins.len = ...`) never leaks into
- * the next, and the modules a cell imported are imported afresh by the next one. Returns (traceback or "", check status, check message, interrupted).
+ * `run(code, check, given)` runs the code in a fresh namespace under the file name "cell", so a
+ * traceback names the cell's lines and nothing of ours. The namespace starts with the names in
+ * `given` (JSON text of an object, from the host: a round's ciphertext, say), decoded afresh for
+ * every run, so a cell that changes them never changes the next run's. Then the check runs in the
+ * same namespace, with `_printed` holding everything the code printed.
+ *
+ * The builtins and recursion limit are put back as soon as the code ends, so reporting its error
+ * and running the check never use what it changed, and again after the check, so one cell's
+ * experiment (`len = ...`, `builtins.len = ...`) never leaks into the next. The modules a cell
+ * imported are imported afresh by the next one. Returns (traceback or "", check status, check
+ * message, interrupted).
  *
  * It is plain Python, so the tests run it under real CPython (Pyodide in Node) as well.
  */
 export const HARNESS = `
-import builtins, io, linecache, sys, traceback
+import builtins, io, json, linecache, sys, traceback
 
 def _no_input(prompt=""):
     raise RuntimeError("input() does not work here: put the text in a variable instead.")
@@ -43,11 +49,20 @@ def _tb(e):
         tb = tb.tb_next
     return "".join(traceback.format_exception(type(e), e, tb)) if tb is not None else "".join(traceback.format_exception_only(type(e), e))
 
-def _core(code, check, tee):
-    ns = {"__name__": "__main__"}
+def _reset():
+    builtins.__dict__.clear()
+    builtins.__dict__.update(_BUILTINS)
+    sys.setrecursionlimit(_LIMIT)
+
+def _core(code, check, given, tee):
+    ns = {**json.loads(given or "{}"), "__name__": "__main__"}
     _source("cell", code)
     try:
-        exec(compile(code, "cell", "exec"), ns)
+        try:
+            exec(compile(code, "cell", "exec"), ns)
+        finally:
+            # Before anything of ours runs again: reporting an error, and the check, use the real builtins.
+            _reset()
     except KeyboardInterrupt:
         return ("", "", "", True)
     except SystemExit:
@@ -73,20 +88,18 @@ def _core(code, check, tee):
         return ("", "failed", f"{type(e).__name__}: {e}", False)
     return ("", "passed", "", False)
 
-def run(code, check):
+def run(code, check, given=""):
     modules = set(sys.modules)
     real = sys.stdout
     tee = _Tee(real)
     sys.stdout = tee
     try:
-        return _core(code, check, tee)
+        return _core(code, check, given, tee)
     finally:
         sys.stdout = real
         sys.stdout.flush()
         sys.stderr.flush()
-        builtins.__dict__.clear()
-        builtins.__dict__.update(_BUILTINS)
-        sys.setrecursionlimit(_LIMIT)
+        _reset()
         # Modules a cell imported (or made up) are forgotten, so the next cell imports them afresh.
         for name in set(sys.modules) - modules:
             del sys.modules[name]

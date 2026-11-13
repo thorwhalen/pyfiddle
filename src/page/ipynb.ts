@@ -28,6 +28,18 @@ export type IpynbOptions = {
   checks?: boolean;
   /** How many of a cell's hints to include. Default: all (a student's own download passes the ones they revealed). */
   hints?: (cellId: string) => number;
+  /** Values for the page's `given` names: a first code cell sets them, so the notebook runs on its own. */
+  given?: Record<string, unknown>;
+};
+
+/** Python that sets each name: a string as a literal (JSON's escapes are Python's), anything else through `json.loads`. */
+const givenCell = (given: Record<string, unknown>) => {
+  const entries = Object.entries(given);
+  const json = entries.some(([, v]) => typeof v !== 'string');
+  return [
+    ...(json ? ['import json'] : []),
+    ...entries.map(([k, v]) => `${k} = ${typeof v === 'string' ? JSON.stringify(v) : `json.loads(${JSON.stringify(JSON.stringify(v))})`}`),
+  ].join('\n');
 };
 
 /** Jupyter keeps a cell's source as a list of lines, each but the last ending with its newline. */
@@ -65,7 +77,7 @@ except NameError as _e:
 if _ok:
     print("\\u2713 Check passed.")`;
 
-export function toIpynb(page: ResolvedPage, { stage = Infinity, solutions = false, checks = true, hints }: IpynbOptions = {}): Notebook {
+export function toIpynb(page: ResolvedPage, { stage = Infinity, solutions = false, checks = true, hints, given }: IpynbOptions = {}): Notebook {
   const cells: NbCell[] = [];
   // nbformat 4.5 cell ids: 1-64 characters of [A-Za-z0-9-_], unique in the notebook.
   const used = new Set<string>();
@@ -81,6 +93,7 @@ export function toIpynb(page: ResolvedPage, { stage = Infinity, solutions = fals
     cells.push({ cell_type: 'code', id: nbId(id), metadata, source: lines(text), execution_count: null, outputs: [] });
 
   md('title', `# ${page.title}`);
+  if (given && Object.keys(given).length) code('given', givenCell(given));
   for (const c of page.cells) {
     if (c.stage > stage) continue;
     if (c.kind === 'markdown') md(c.id, c.text);

@@ -14,7 +14,7 @@
  * builds the worker (tests pass a fake; a page whose CSP refuses `blob:` workers passes a URL one).
  */
 import { selfHosted, type IndexSource, type Progress } from './assets';
-import type { CheckResult, FromWorker, Stream, ToWorker } from './protocol';
+import type { CheckResult, FromWorker, Given, Stream, ToWorker } from './protocol';
 import { WORKER_SOURCE } from './worker-source.generated';
 
 export type RuntimeState = {
@@ -31,6 +31,8 @@ export type RunResult = { error?: string; check?: CheckResult; interrupted?: boo
 export type RunOptions = {
   owner: string;
   check?: string;
+  /** Names the program starts with (a round's ciphertext, say); JSON values. */
+  given?: Given;
   onOutput: (stream: Stream, text: string) => void;
   /** Stop whatever is running or loading for another cell, and run this instead. */
   preempt?: boolean;
@@ -171,7 +173,8 @@ export function createPythonRuntime({ indexURL = selfHosted(), makeWorker = blob
     /** Load Python now (say, when a page with cells is opened and the network is idle), without running anything. */
     warm: (owner = 'warm') => start(owner).then(() => undefined, () => undefined),
     /** Run a program; resolves when it ends, is stopped or overtaken, or Python fails to start. */
-    async run(code: string, { owner, check, onOutput, preempt = false }: RunOptions): Promise<RunResult> {
+    async run(code: string, { owner, check, given, onOutput, preempt = false }: RunOptions): Promise<RunResult> {
+      const givenJson = given && Object.keys(given).length ? JSON.stringify(given) : undefined;
       const busy = running !== null || state.status === 'loading';
       if (busy && !preempt) return { error: BUSY };
       const ticket = ++latestRequest;
@@ -197,7 +200,7 @@ export function createPythonRuntime({ indexURL = selfHosted(), makeWorker = blob
         resolve = r;
       });
       running = { id, onOutput, resolve, done };
-      w.postMessage({ type: 'run', id, code, check } satisfies ToWorker);
+      w.postMessage({ type: 'run', id, code, check, given: givenJson } satisfies ToWorker);
       return done;
     },
     /** Stop the running program, or a first load that is taking too long. */
