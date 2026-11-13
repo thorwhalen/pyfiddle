@@ -28,6 +28,13 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium webkit
       - run: node scripts/prepare-example.mjs && npx playwright test
+      - name: Keep the traces of failed browser tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 14
 
   publish:
     needs: validate

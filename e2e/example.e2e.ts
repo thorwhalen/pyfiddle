@@ -40,6 +40,8 @@ test('a teacher releases a part; the student sees it, checks a solution, and the
 
   await expect(task.getByRole('textbox', { name: 'Make n the number of times the letter t appears in sentence, whether it is written T or t.' })).toBeVisible();
   await task.locator('.pf-editor .cm-content').first().fill('sentence = "The quick brown fox jumps over the lazy dog"\nn = sentence.lower().count("t")\nprint(n)');
+  // The editor holds the new code before Run (a fill not yet applied would run the old code again).
+  await expect(task.locator('.pf-editor .cm-content').first()).toContainText('sentence.lower().count("t")');
   await task.getByRole('button', { name: 'Run' }).click();
   await expect(task.getByText('✓ Check passed.')).toBeVisible({ timeout: 60_000 });
   await expect(task.getByText('✓ Done')).toBeVisible();
