@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pyfiddle example</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    /* The host's own tokens: pyfiddle picks these up (shadcn names), and follows light and dark. */
+    :root { color-scheme: light dark; --radius: 0.75rem; }
+    body { margin: 0; font: 16px/1.55 system-ui, sans-serif; background: Canvas; color: CanvasText; }
+    main { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    nav { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.9rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.6rem; margin: 0 0 1rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav>
+      <a href="#first-steps">Example page</a>
+      <a href="#concept-for">Concept page: for loops</a>
+      <a href="?teacher#first-steps" id="teacher-link">Teacher view</a>
+    </nav>
+    <h1 id="title"></h1>
+    <div id="page"></div>
+  </main>
+  <script src="./pyfiddle.iife.js"></script>
+  <script>
+    // A page with no build step: the one-file bundle, Python served from ./pyodide/v<version>/ (`npx pyfiddle pyodide .`).
+    const teacher = new URLSearchParams(location.search).has('teacher');
+    let current = null;
+    async function show() {
+      const id = location.hash.slice(1) || 'first-steps';
+      const page = await (await fetch(`./pages/${id}.json`)).json();
+      current?.destroy();
+      document.getElementById('title').textContent = page.title;
+      document.title = `${page.title} · pyfiddle`;
+      current = pyfiddle.mountPage(document.getElementById('page'), page, { teacher });
+    }
+    addEventListener('hashchange', show);
+    show();
+  </script>
+</body>
+</html>

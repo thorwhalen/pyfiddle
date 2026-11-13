@@ -1,0 +1,23 @@
+{
+  "$schema": "../../dist/page.schema.json",
+  "id": "concept-for",
+  "title": "for loops",
+  "cells": [
+    {
+      "kind": "markdown",
+      "text": "`for x in things:` runs the indented lines once for each item of `things`. A string's items are its characters."
+    },
+    {
+      "kind": "code",
+      "text": "for c in \"abc\":\n    print(c, c.upper())\n"
+    },
+    {
+      "kind": "code",
+      "task": "Print each number from 1 to 5 on its own line, using `range(1, 6)`.",
+      "text": "# your loop here\n",
+      "check": "assert _printed.split() == [\"1\", \"2\", \"3\", \"4\", \"5\"], \"Print 1, 2, 3, 4 and 5, one per line.\"\n",
+      "hint": "`for i in range(1, 6):` then `print(i)`, indented.",
+      "solution": "for i in range(1, 6):\n    print(i)\n"
+    }
+  ]
+}
