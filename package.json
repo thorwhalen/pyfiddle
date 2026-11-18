@@ -1,6 +1,6 @@
 {
   "name": "pyfiddle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Python fiddle web pages: text and runnable Python cells, real CPython (Pyodide) in a Web Worker, staged disclosure, hidden checks, concept explainers, .ipynb export.",
   "type": "module",
   "main": "./dist/index.js",
